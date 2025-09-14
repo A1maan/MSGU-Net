@@ -1,0 +1,43 @@
+# Core deep learning framework
+torch>=1.12.0
+torchvision>=0.13.0
+torchaudio>=0.12.0
+
+# For numerical computations and array operations
+numpy>=1.21.0
+
+# For data visualization (if needed for model analysis)
+matplotlib>=3.5.0
+
+# For scientific computing and image processing
+scipy>=1.8.0
+scikit-image>=0.19.0
+
+# For progress bars and logging
+tqdm>=4.64.0
+
+# For data handling and manipulation
+pandas>=1.4.0
+
+# For image processing and computer vision
+opencv-python>=4.6.0
+Pillow>=9.0.0
+
+# For model visualization and debugging (optional)
+tensorboard>=2.9.0
+
+# For CUDA support (optional, uncomment if using GPU)
+# torch>=1.12.0+cu116
+# torchvision>=0.13.0+cu116
+# torchaudio>=0.12.0+cu116
+
+# For medical image processing (if working with medical data)
+# nibabel>=4.0.0
+# SimpleITK>=2.2.0
+
+# For advanced data augmentation
+# albumentations>=1.2.0
+
+# For model deployment and optimization
+# onnx>=1.12.0
+# onnxruntime>=1.12.0
