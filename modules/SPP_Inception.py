@@ -27,14 +27,14 @@ class SPPInceptionModule(nn.Module):
 
         # Branch 1: 1x1 conv
         self.branch1 = nn.Sequential(
-            nn.Conv2d(in_channels, branch_channels, kernel_size=1, padding=0),
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1),
             nn.BatchNorm2d(branch_channels),
             nn.ReLU(inplace=True)
         )
 
-        # Branch 2: 3x3 -> 3x3
+        # Branch 2: 1x1 -> 3x3
         self.branch2 = nn.Sequential(
-            nn.Conv2d(in_channels, branch_channels, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1),
             nn.BatchNorm2d(branch_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(branch_channels, branch_channels, kernel_size=3, padding=1),
@@ -42,9 +42,9 @@ class SPPInceptionModule(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        # Branch 3: 5x5 -> 5x5
+        # Branch 3: 1x1 -> 5x5
         self.branch3 = nn.Sequential(
-            nn.Conv2d(in_channels, branch_channels, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1),
             nn.BatchNorm2d(branch_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(branch_channels, branch_channels, kernel_size=5, padding=2),
@@ -55,7 +55,7 @@ class SPPInceptionModule(nn.Module):
         # Branch 4: 3x3 maxpool -> 1x1 conv
         self.branch4 = nn.Sequential(
             nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
-            nn.Conv2d(in_channels, branch_channels, kernel_size=1, padding=0),
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1),
             nn.BatchNorm2d(branch_channels),
             nn.ReLU(inplace=True)
         )

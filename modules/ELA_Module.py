@@ -31,18 +31,18 @@ class ELAModule(nn.Module):
         self.reduction = reduction
         
         # Calculate intermediate channels with reduction
-        # self.intermediate_channels = max(channels // reduction, 1)
+        self.intermediate_channels = max(channels // reduction, 1)
         
         # Ensure num_groups is compatible with intermediate channels
         self.num_groups = num_groups
-        # if self.intermediate_channels % self.num_groups != 0:
-        #     self.num_groups = 1  # Fallback to instance normalization
+        if self.intermediate_channels % self.num_groups != 0:
+            self.num_groups = 1  # Fallback to instance normalization
         
         # Horizontal direction processing (for H×1 strip pooling)
         # 1D convolution for height dimension
         self.conv_h = nn.Conv1d(
             in_channels=channels,
-            out_channels=channels,
+            out_channels=self.intermediate_channels,
             kernel_size=kernel_size,
             padding=kernel_size // 2,
             bias=False
@@ -51,14 +51,14 @@ class ELAModule(nn.Module):
         # Group normalization for horizontal direction
         self.gn_h = nn.GroupNorm(
             num_groups=self.num_groups,
-            num_channels=channels
+            num_channels=self.intermediate_channels
         )
         
         # Vertical direction processing (for 1×W strip pooling)
         # 1D convolution for width dimension
         self.conv_w = nn.Conv1d(
             in_channels=channels,
-            out_channels=channels,
+            out_channels=self.intermediate_channels,
             kernel_size=kernel_size,
             padding=kernel_size // 2,
             bias=False
@@ -67,23 +67,23 @@ class ELAModule(nn.Module):
         # Group normalization for vertical direction
         self.gn_w = nn.GroupNorm(
             num_groups=self.num_groups,
-            num_channels=channels
+            num_channels=self.intermediate_channels
         )
         
         # Final convolutions to generate attention maps
-        # self.conv_h_final = nn.Conv1d(
-        #     in_channels=self.intermediate_channels,
-        #     out_channels=channels,
-        #     kernel_size=1,
-        #     bias=False
-        # )
+        self.conv_h_final = nn.Conv1d(
+            in_channels=self.intermediate_channels,
+            out_channels=channels,
+            kernel_size=1,
+            bias=False
+        )
         
-        # self.conv_w_final = nn.Conv1d(
-        #     in_channels=self.intermediate_channels,
-        #     out_channels=channels,
-        #     kernel_size=1,
-        #     bias=False
-        # )
+        self.conv_w_final = nn.Conv1d(
+            in_channels=self.intermediate_channels,
+            out_channels=channels,
+            kernel_size=1,
+            bias=False
+        )
         
         # Activation functions
         self.sigmoid = nn.Sigmoid()
@@ -117,7 +117,7 @@ class ELAModule(nn.Module):
         y_h = self.conv_h(x_h)  # Shape: (B, intermediate_channels, H)
         y_h = self.gn_h(y_h)    # Group normalization
         # y_h = F.relu(y_h, inplace=True)  # Nonlinear activation σ
-        # y_h = self.conv_h_final(y_h)  # Shape: (B, C, H)
+        y_h = self.conv_h_final(y_h)  # Shape: (B, C, H)
         y_h = self.sigmoid(y_h)  # Generate attention weights
         
         # Process vertical features - Equation 6
@@ -125,7 +125,7 @@ class ELAModule(nn.Module):
         y_w = self.conv_w(x_w)  # Shape: (B, intermediate_channels, W)
         y_w = self.gn_w(y_w)    # Group normalization
         # y_w = F.relu(y_w, inplace=True)  # Nonlinear activation σ
-        # y_w = self.conv_w_final(y_w)  # Shape: (B, C, W)
+        y_w = self.conv_w_final(y_w)  # Shape: (B, C, W)
         y_w = self.sigmoid(y_w)  # Generate attention weights
         
         # Step 3: Apply coordinate attention - Equation 7

@@ -50,30 +50,34 @@ class MSGUNet(nn.Module):
         # Bottleneck
         self.bottleneck = nn.Sequential(
             SPPInceptionModule(C4, C5),
-            GhostModule(C5, C5),
             ELAModule(C5),
+            GhostModule(C5, C5),
         )
 
         # Decoder path with attention gates
-        self.up4 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        # self.up4 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
         self.ag4 = AttentionGate(F_g=C5, F_l=C4, F_int=C4 // 2)
         self.dec4 = GhostModule(C5 + C4, C4)
 
-        self.up3 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        # self.up3 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
         self.ag3 = AttentionGate(F_g=C4, F_l=C3, F_int=C3 // 2)
         self.dec3 = GhostModule(C4 + C3, C3)
 
-        self.up2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        # self.up2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
         self.ag2 = AttentionGate(F_g=C3, F_l=C2, F_int=C2 // 2)
         self.dec2 = GhostModule(C3 + C2, C2)
 
-        self.up1 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+        # self.up1 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
         self.ag1 = AttentionGate(F_g=C2, F_l=C1, F_int=C1 // 2)
         self.dec1 = GhostModule(C2 + C1, C1)
 
         # Final output layer
-        self.final_conv = nn.Conv2d(C1, out_channels, kernel_size=1)
-
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(C1, out_channels, kernel_size=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU6(),
+        )
+        
     def forward(self, x):
         # Encoder
         e1 = self.enc1(x)
@@ -91,84 +95,50 @@ class MSGUNet(nn.Module):
         b = self.bottleneck(p4)
 
         # Decoder with attention
-        d4 = self.up4(b)
+        d4 = F.interpolate(b, scale_factor=2, mode="bilinear", align_corners=False)
         e4_att, _ = self.ag4(e4, d4)
         d4 = self.dec4(torch.cat([d4, e4_att], dim=1))
 
-        d3 = self.up3(d4)
+        d3 = F.interpolate(d4, scale_factor=2, mode="bilinear", align_corners=False)
         e3_att, _ = self.ag3(e3, d3)
         d3 = self.dec3(torch.cat([d3, e3_att], dim=1))
 
-        d2 = self.up2(d3)
+        d2 = F.interpolate(d3, scale_factor=2, mode="bilinear", align_corners=False)
         e2_att, _ = self.ag2(e2, d2)
         d2 = self.dec2(torch.cat([d2, e2_att], dim=1))
 
-        d1 = self.up1(d2)
+        d1 = F.interpolate(d2, scale_factor=2, mode="bilinear", align_corners=False)
         e1_att, _ = self.ag1(e1, d1)
         d1 = self.dec1(torch.cat([d1, e1_att], dim=1))
 
         out = self.final_conv(d1)
         return out
 
-
 if __name__ == "__main__":
     import torch
 
     # Initialize model
-    model = MSGUNet(in_channels=3, out_channels=1, base_channels=32)  # try 16 instead of 32
+    model = MSGUNet(in_channels=3, out_channels=1, base_channels=32)
     x = torch.randn(2, 3, 256, 256)
 
     print("Input :", x.shape)
 
-    # --- Encoder ---
-    e1 = model.enc1(x)
-    print("After enc1:", e1.shape)   # H, W same
-    p1 = model.pool1(e1)
-    print("After pool1:", p1.shape) # H/2, W/2
+    # Forward pass
+    out = model(x)
+    print("Output:", out.shape)
 
-    e2 = model.enc2(p1)
-    print("After enc2:", e2.shape)
-    p2 = model.pool2(e2)
-    print("After pool2:", p2.shape) # H/4, W/4
+    # --- Parameter counts per module ---
+    print("\n--- Parameter breakdown ---")
+    total_params = 0
+    for name, module in model.named_children():   # top-level modules
+        mod_params = sum(p.numel() for p in module.parameters())
+        print(f"{name:<15} : {mod_params:,}")
+        total_params += mod_params
 
-    e3 = model.enc3(p2)
-    print("After enc3:", e3.shape)
-    p3 = model.pool3(e3)
-    print("After pool3:", p3.shape) # H/8, W/8
+        # Optionally also print submodules
+        for sub_name, sub_module in module.named_children():
+            sub_params = sum(p.numel() for p in sub_module.parameters())
+            if sub_params > 0:
+                print(f"   {name}.{sub_name:<10} : {sub_params:,}")
 
-    e4 = model.enc4(p3)
-    print("After enc4:", e4.shape)
-    p4 = model.pool4(e4)
-    print("After pool4:", p4.shape) # H/16, W/16
-
-    b = model.bottleneck(p4)
-    print("Bottleneck :", b.shape)  # deepest layer
-
-    # --- Decoder ---
-    d4_up = model.up4(b)
-    print("Up4 :", d4_up.shape)     # H/8, W/8
-    e4_att, _ = model.ag4(e4, d4_up)
-    d4 = model.dec4(torch.cat([d4_up, e4_att], dim=1))
-    print("After dec4:", d4.shape)
-
-    d3_up = model.up3(d4)
-    print("Up3 :", d3_up.shape)     # H/4, W/4
-    e3_att, _ = model.ag3(e3, d3_up)
-    d3 = model.dec3(torch.cat([d3_up, e3_att], dim=1))
-    print("After dec3:", d3.shape)
-
-    d2_up = model.up2(d3)
-    print("Up2 :", d2_up.shape)     # H/2, W/2
-    e2_att, _ = model.ag2(e2, d2_up)
-    d2 = model.dec2(torch.cat([d2_up, e2_att], dim=1))
-    print("After dec2:", d2.shape)
-
-    d1_up = model.up1(d2)
-    print("Up1 :", d1_up.shape)     # H, W
-    e1_att, _ = model.ag1(e1, d1_up)
-    d1 = model.dec1(torch.cat([d1_up, e1_att], dim=1))
-    print("After dec1:", d1.shape)
-
-    out = model.final_conv(d1)
-    print("Output :", out.shape)
-
+    print(f"\nTotal parameters: {total_params:,}")
