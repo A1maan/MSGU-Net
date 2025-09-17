@@ -1,5 +1,3 @@
-# MSGU-Net
-
 # MSGU-Net: Multi-Scale Ghost U-Net for Medical Image Segmentation
 
 MSGU-Net is a deep learning framework for medical image segmentation, designed to segment anatomical structures in ultrasound images. The architecture combines U-Net with multi-scale feature extraction and Ghost modules, incorporating attention mechanisms and advanced modules for improved segmentation accuracy.
