@@ -1,0 +1,12 @@
+# Core deep learning framework
+torch>=1.12.0
+torchvision>=0.13.0
+
+# For numerical computations and array operations
+numpy>=1.21.0
+
+# For data visualization
+matplotlib>=3.5.0
+
+# For image loading
+Pillow>=9.0.0
