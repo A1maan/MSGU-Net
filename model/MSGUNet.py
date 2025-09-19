@@ -115,7 +115,6 @@ class MSGUNet(nn.Module):
         return out
 
 if __name__ == "__main__":
-    import torch
 
     # Initialize model
     model = MSGUNet(in_channels=3, out_channels=1, base_channels=32)
