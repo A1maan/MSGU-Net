@@ -5,92 +5,63 @@ import torch.nn.functional as F
 
 class ELAModule(nn.Module):
     """
-    ELA (Enhanced Long-range Attention) Module.
+    ELA (Enhanced Long-range Attention) Module - Efficient Implementation.
     
-    This module is an improvement over the CA (Coordinate Attention) mechanism.
-    It replaces 2D Conv and BN layers with 7×1 1D conv and GN (Group Normalization)
-    layers to enhance interaction and generalization ability of location information
-    embedding.
+    This module implements the efficient localization attention mechanism.
+    It uses 1D convolutions with Group Normalization for coordinate attention
+    generation without intermediate channel reduction for better efficiency.
     
-    The ELA mechanism consists of two main steps:
-    1. Coordinate information embedding using strip pooling
-    2. Coordinate attention generation using 1D convolutions and GN
+    The ELA mechanism consists of:
+    1. Strip pooling for coordinate information embedding
+    2. 1D convolutions with Group Normalization for attention generation
+    3. Element-wise multiplication for attention application
     
     Args:
-        channels (int): Number of input channels
-        reduction (int): Reduction ratio for intermediate channels (default: 32)
+        channel (int): Number of input channels
         kernel_size (int): Kernel size for 1D convolutions (default: 7)
-        num_groups (int): Number of groups for Group Normalization (default: 8)
     """
     
-    def __init__(self, channels, reduction=1, kernel_size=7, num_groups=8):
+    def __init__(self, channel, kernel_size=7):
         super(ELAModule, self).__init__()
         
-        self.channels = channels
+        self.channel = channel
         self.kernel_size = kernel_size
-        self.reduction = reduction
         
-        # Calculate intermediate channels with reduction
-        self.intermediate_channels = max(channels // reduction, 1)
+        # Calculate padding for 1D convolutions
+        pad = kernel_size // 2
         
-        # Ensure num_groups is compatible with intermediate channels
-        self.num_groups = num_groups
-        if self.intermediate_channels % self.num_groups != 0:
-            self.num_groups = 1  # Fallback to instance normalization
-        
-        # Horizontal direction processing (for H×1 strip pooling)
-        # 1D convolution for height dimension
+        # 1D convolution for horizontal direction (height pooling)
         self.conv_h = nn.Conv1d(
-            in_channels=channels,
-            out_channels=self.intermediate_channels,
+            channel, 
+            channel, 
             kernel_size=kernel_size,
-            padding=kernel_size // 2,
+            padding=pad, 
+            groups=channel, 
             bias=False
         )
         
         # Group normalization for horizontal direction
-        self.gn_h = nn.GroupNorm(
-            num_groups=self.num_groups,
-            num_channels=self.intermediate_channels
-        )
+        self.gn_h = nn.GroupNorm(16, channel)
         
-        # Vertical direction processing (for 1×W strip pooling)
-        # 1D convolution for width dimension
+        # 1D convolution for vertical direction (width pooling)
         self.conv_w = nn.Conv1d(
-            in_channels=channels,
-            out_channels=self.intermediate_channels,
+            channel, 
+            channel, 
             kernel_size=kernel_size,
-            padding=kernel_size // 2,
+            padding=pad, 
+            groups=channel, 
             bias=False
         )
         
         # Group normalization for vertical direction
-        self.gn_w = nn.GroupNorm(
-            num_groups=self.num_groups,
-            num_channels=self.intermediate_channels
-        )
+        self.gn_w = nn.GroupNorm(16, channel)
         
-        # Final convolutions to generate attention maps
-        self.conv_h_final = nn.Conv1d(
-            in_channels=self.intermediate_channels,
-            out_channels=channels,
-            kernel_size=1,
-            bias=False
-        )
-        
-        self.conv_w_final = nn.Conv1d(
-            in_channels=self.intermediate_channels,
-            out_channels=channels,
-            kernel_size=1,
-            bias=False
-        )
-        
-        # Activation functions
+        # Activation function
         self.sigmoid = nn.Sigmoid()
     
     def forward(self, x):
         """
-        Forward pass through ELA module.
+        Forward pass through ELA module - Efficient Implementation.
         
         Args:
             x (torch.Tensor): Input tensor of shape (B, C, H, W)
@@ -98,47 +69,23 @@ class ELAModule(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (B, C, H, W) with applied attention
         """
-        batch_size, channels, height, width = x.size()
+        b, c, h, w = x.size()
         
-        # Step 1: Strip pooling - Coordinate information embedding
+        # Strip pooling for coordinate information embedding
+        # Horizontal pooling: average across width dimension
+        x_h = torch.mean(x, dim=3, keepdim=True).view(b, c, h)  # Shape: (B, C, H)
         
-        # Horizontal strip pooling (H, 1) - Equation 3
-        # z_h^c(h) = 1/W * Σ(w=0 to W-1) x_c(h, w)
-        x_h = torch.mean(x, dim=3, keepdim=False)  # Shape: (B, C, H)
+        # Vertical pooling: average across height dimension  
+        x_w = torch.mean(x, dim=2, keepdim=True).view(b, c, w)  # Shape: (B, C, W)
         
-        # Vertical strip pooling (1, W) - Equation 4  
-        # z_w^c(w) = 1/H * Σ(h=0 to H-1) x_c(h, w)
-        x_w = torch.mean(x, dim=2, keepdim=False)  # Shape: (B, C, W)
+        # Generate attention weights for horizontal direction
+        x_h = self.sigmoid(self.gn_h(self.conv_h(x_h))).view(b, c, h, 1)
         
-        # Step 2: Coordinate attention generation using 1D convolutions
+        # Generate attention weights for vertical direction
+        x_w = self.sigmoid(self.gn_w(self.conv_w(x_w))).view(b, c, 1, w)
         
-        # Process horizontal features - Equation 5
-        # y_h = σ(GN(F_h(z_h)))
-        y_h = self.conv_h(x_h)  # Shape: (B, intermediate_channels, H)
-        y_h = self.gn_h(y_h)    # Group normalization
-        # y_h = F.relu(y_h, inplace=True)  # Nonlinear activation σ
-        y_h = self.conv_h_final(y_h)  # Shape: (B, C, H)
-        y_h = self.sigmoid(y_h)  # Generate attention weights
-        
-        # Process vertical features - Equation 6
-        # y_w = σ(GN(F_w(z_w)))
-        y_w = self.conv_w(x_w)  # Shape: (B, intermediate_channels, W)
-        y_w = self.gn_w(y_w)    # Group normalization
-        # y_w = F.relu(y_w, inplace=True)  # Nonlinear activation σ
-        y_w = self.conv_w_final(y_w)  # Shape: (B, C, W)
-        y_w = self.sigmoid(y_w)  # Generate attention weights
-        
-        # Step 3: Apply coordinate attention - Equation 7
-        # Y = x × y_h × y_w
-        
-        # Reshape attention maps to match input dimensions
-        y_h = y_h.unsqueeze(3)  # Shape: (B, C, H, 1)
-        y_w = y_w.unsqueeze(2)  # Shape: (B, C, 1, W)
-        
-        # Apply attention: element-wise multiplication
-        output = x * y_h * y_w  # Broadcasting: (B, C, H, W) × (B, C, H, 1) × (B, C, 1, W)
-        
-        return output
+        # Apply coordinate attention through element-wise multiplication
+        return x * x_h * x_w
     
     def get_parameter_count(self):
         """
@@ -154,7 +101,7 @@ if __name__ == "__main__":
     print("Testing ELA Module...")
     
     # Test basic ELA Module
-    ela_module = ELAModule(channels=64, reduction=32, kernel_size=7)
+    ela_module = ELAModule(channel=64, kernel_size=7)
     test_input = torch.randn(2, 64, 32, 32)
     output = ela_module(test_input)
     
@@ -168,7 +115,7 @@ if __name__ == "__main__":
     test_sizes = [(1, 128, 16, 16), (3, 256, 64, 64), (4, 32, 8, 8)]
     
     for batch, channels, height, width in test_sizes:
-        ela_test = ELAModule(channels=channels, reduction=16)
+        ela_test = ELAModule(channel=channels, kernel_size=7)
         test_input = torch.randn(batch, channels, height, width)
         output = ela_test(test_input)
         
