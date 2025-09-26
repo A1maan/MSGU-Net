@@ -23,7 +23,7 @@ class ELAModule(nn.Module):
         num_groups (int): Number of groups for Group Normalization (default: 8)
     """
     
-    def __init__(self, channels, reduction=32, kernel_size=7, num_groups=8):
+    def __init__(self, channels, reduction=1, kernel_size=7, num_groups=8):
         super(ELAModule, self).__init__()
         
         self.channels = channels

@@ -185,7 +185,7 @@ train_losses = []
 test_losses = []
 
 best_loss = float("inf")
-best_model_path = "weights/best_model_isic2018.pth"
+best_model_path = "weights/best_model_isic2018_3.pth"
 
 for epoch in range(n_epochs):
     train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, device, epoch, n_epochs)
@@ -203,7 +203,7 @@ for epoch in range(n_epochs):
         print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
 # Optionally save final model too
-torch.save(model.state_dict(), "weights/model_isic2018.pth")
+torch.save(model.state_dict(), "weights/model_isic2018_3.pth")
 print("💾 Training complete, final model saved.")
 
 
@@ -234,7 +234,7 @@ for idx in range(n_samples):
     plt.axis('off')
 
 plt.tight_layout()
-plt.savefig('plots/sample_predictions_grid_isic2018.png')
+plt.savefig('plots/sample_predictions_grid_isic2018_3.png')
 plt.show()
 
 # After training cell (after training loop and model saving)
@@ -246,7 +246,7 @@ plt.ylabel("Loss")
 plt.title("Loss Curve")
 plt.legend()
 plt.tight_layout()
-plt.savefig('plots/loss_curve_isic2018.png')
+plt.savefig('plots/loss_curve_isic2018_3.png')
 plt.show()
 
 

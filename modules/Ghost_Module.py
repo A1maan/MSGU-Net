@@ -136,9 +136,9 @@ class GhostModule(nn.Module):
         )
         
         # Part 2: 3x3 depthwise convolution (Ghost features)
-        # Y'' = Concat(Y', Fdp * Y') (Equation 2)
+        # Y'' = Concat(Y', Y' * Fdp) (Equation 2)
         self.cheap_operation = nn.Sequential(
-            nn.Conv2d(init_channels, new_channels, dw_size, 1, dw_size // 2, 
+            nn.Conv2d(init_channels, new_channels, kernel_size=3, stride=1, padding=1, 
                      groups=init_channels, bias=False),
             nn.BatchNorm2d(new_channels),
             nn.ReLU(inplace=True)
@@ -162,7 +162,7 @@ class GhostModule(nn.Module):
         primary_features = self.primary_conv(x)  # Y' in Equation 1
         
         # Part 2: Generate ghost features using 3x3 depthwise convolution
-        ghost_features = self.cheap_operation(primary_features)  # Fdp * Y'
+        ghost_features = self.cheap_operation(primary_features)  # Y' * Fdp
         
         # Concatenate primary and ghost features (Equation 2)
         output = torch.cat([primary_features, ghost_features], dim=1)  # Y''

@@ -1,6 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import sys
+import os
+
+# Add parent directory to path to find modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import modules from modules folder
 from modules import SPPInceptionModule, GhostModule, ELAModule, AttentionGate
