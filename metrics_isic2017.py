@@ -231,7 +231,7 @@ print("Using device:", device)
 model = MSGUNet(in_channels=3, out_channels=1, base_channels=32).to(device)
 
 # Load pretrained weights
-pretrained_weights_path = "weights/best_model_isic2017_3.pth"  # Update this path if needed
+pretrained_weights_path = "weights/best_model_isic2017_4.pth"  # Update this path if needed
 if os.path.exists(pretrained_weights_path):
     print(f"Loading pretrained weights from: {pretrained_weights_path}")
     model.load_state_dict(torch.load(pretrained_weights_path, map_location=device))
@@ -311,7 +311,7 @@ for idx in range(n_samples):
     plt.axis('off')
 
 plt.tight_layout()
-plt.savefig('plots/sample_predictions_with_metrics_isic2017_3.png', dpi=300, bbox_inches='tight')
+plt.savefig('plots/sample_predictions_with_metrics_isic2017_4.png', dpi=300, bbox_inches='tight')
 plt.show()
 
 print("\n" + "="*60)
