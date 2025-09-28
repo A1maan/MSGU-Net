@@ -67,18 +67,18 @@ class DFCAttention(nn.Module):
         """
         batch_size, channels, height, width = x.size()
         
-        # Step 1: Average pooling for downsampling
+        # Step 1: Average pooling for global context
         pooled = self.avg_pool(x)  # Shape: (B, C, 1, 1)
         
         # Step 2: Channel reduction with 1x1 convolution
         reduced = self.conv_reduce(pooled)  # Shape: (B, C//reduction, 1, 1)
         
-        # # Step 3: Broadcast to full spatial size
-        # reduced_map = reduced.expand(-1, -1, height, width)  # Shape: (B, C//reduction, H, W)
+        # Step 3: Broadcast to full spatial size for spatial convolutions
+        reduced_map = reduced.expand(-1, -1, height, width)  # Shape: (B, C//reduction, H, W)
         
-        # Step 4: Apply horizontal and vertical convolutions
-        horizontal_out = self.horizontal_fc(reduced)  # Shape: (B, C//reduction, H, W)
-        vertical_out = self.vertical_fc(reduced)      # Shape: (B, C//reduction, H, W)
+        # Step 4: Apply horizontal and vertical convolutions on full spatial size
+        horizontal_out = self.horizontal_fc(reduced_map)  # Shape: (B, C//reduction, H, W)
+        vertical_out = self.vertical_fc(reduced_map)      # Shape: (B, C//reduction, H, W)
         
         # Step 5: Combine horizontal and vertical features
         combined = horizontal_out + vertical_out  # Shape: (B, C//reduction, H, W)
@@ -86,11 +86,8 @@ class DFCAttention(nn.Module):
         # Step 6: Restore channel dimension
         attention = self.conv_expand(combined)  # Shape: (B, C, H, W)
         
-        # Step 7: Apply sigmoid activation
+        # Step 7: Apply sigmoid activation for attention weights
         attention = self.sigmoid(attention)
-        
-        # Step 8: Upsample back to original input size (paper: bilinear interpolation)
-        attention = F.interpolate(attention, size=(height, width), mode='bilinear', align_corners=False)
         
         return attention
 
