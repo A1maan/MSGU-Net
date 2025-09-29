@@ -98,11 +98,20 @@ class ISICSegmentationDataset(Dataset):
 
 base_dir_2018 = "/home/aminu_yusuf/msgunet/datasets/ISIC2018"
 
-transform_img = T.Compose([
+# Training transforms (with augmentation)
+transform_img_train = T.Compose([
     T.Resize((256, 256)),
     T.RandomHorizontalFlip(p=0.5),   # 50% chance to flip horizontally
     T.RandomVerticalFlip(p=0.5),     # 50% chance to flip vertically
     T.RandomRotation(degrees=15),    # rotate randomly between -15° to +15°
+    T.ToTensor(),
+    T.Normalize(mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]),
+])
+
+# Test transforms (no augmentation - deterministic only)
+transform_img_test = T.Compose([
+    T.Resize((256, 256)),
     T.ToTensor(),
     T.Normalize(mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]),
@@ -114,10 +123,10 @@ transform_mask = T.Compose([
 ])  
 
 train_dataset_2018 = ISICSegmentationDataset(
-    base_dir=base_dir_2018, split="train", transform=transform_img, mask_transform=transform_mask, seed=SEED
+    base_dir=base_dir_2018, split="train", transform=transform_img_train, mask_transform=transform_mask, seed=SEED
 )
 test_dataset_2018 = ISICSegmentationDataset(
-    base_dir=base_dir_2018, split="test", transform=transform_img, mask_transform=transform_mask, seed=SEED
+    base_dir=base_dir_2018, split="test", transform=transform_img_test, mask_transform=transform_mask, seed=SEED
 )
 
 train_loader_2018 = DataLoader(train_dataset_2018, batch_size=8, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
@@ -185,7 +194,7 @@ train_losses = []
 test_losses = []
 
 best_loss = float("inf")
-best_model_path = "weights/best_model_isic2018_4.pth"
+best_model_path = "weights/best_model_isic2018_5.pth"
 
 for epoch in range(n_epochs):
     train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, device, epoch, n_epochs)
@@ -203,7 +212,7 @@ for epoch in range(n_epochs):
         print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
 # Optionally save final model too
-torch.save(model.state_dict(), "weights/model_isic2018_4.pth")
+torch.save(model.state_dict(), "weights/model_isic2018_5.pth")
 print("💾 Training complete, final model saved.")
 
 
@@ -234,7 +243,7 @@ for idx in range(n_samples):
     plt.axis('off')
 
 plt.tight_layout()
-plt.savefig('plots/sample_predictions_grid_isic2018_4.png')
+plt.savefig('plots/sample_predictions_grid_isic2018_5.png')
 plt.show()
 
 # After training cell (after training loop and model saving)
@@ -246,7 +255,7 @@ plt.ylabel("Loss")
 plt.title("Loss Curve")
 plt.legend()
 plt.tight_layout()
-plt.savefig('plots/loss_curve_isic2018_4.png')
+plt.savefig('plots/loss_curve_isic2018_5.png')
 plt.show()
 
 
