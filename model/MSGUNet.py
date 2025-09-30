@@ -3,9 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 import sys
 import os
+from thop import profile, clever_format
 
 # Add parent directory to path to find modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Try to import thop for FLOPS calculation
+try:
+    from thop import profile, clever_format
+    THOP_AVAILABLE = True
+except ImportError:
+    THOP_AVAILABLE = False
+    print("Warning: thop not available. Install with 'pip install thop' to see FLOPS.")
 
 # Import modules from modules folder
 from modules import SPPInceptionModule, GhostModule, ELAModule, AttentionGate
@@ -146,3 +155,23 @@ if __name__ == "__main__":
                 print(f"   {name}.{sub_name:<10} : {sub_params:,}")
 
     print(f"\nTotal parameters: {total_params:,}")
+
+    # --- FLOPS calculation ---
+    
+    print("\n--- FLOPS Analysis ---")
+    # Create a fresh model for FLOPS calculation
+    flops_model = MSGUNet(in_channels=3, out_channels=1, base_channels=32)
+    input_tensor = torch.randn(1, 3, 256, 256)  # Single sample for FLOPS calculation
+    
+    try:
+        flops, params = profile(flops_model, inputs=(input_tensor,), verbose=False)
+        flops_formatted, params_formatted = clever_format([flops, params], "%.3f")
+        
+        print(f"FLOPs: {flops_formatted}")
+        print(f"Params (thop): {params_formatted}")
+        print(f"GFLOPs: {flops / 1e9:.3f}")
+        
+    except Exception as e:
+        print(f"FLOPS calculation failed: {e}")
+        print("This might be due to custom modules. Consider using fvcore or manual calculation.")
+

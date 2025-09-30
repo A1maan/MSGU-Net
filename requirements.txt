@@ -10,3 +10,8 @@ matplotlib>=3.5.0
 
 # For image loading
 Pillow>=9.0.0
+
+# For performance metrics
+scikit-learn>=1.0.0
+# For advanced model analysis (FLOPS and parameters)
+thop>=0.0.31.post2005241907  # Uncomment if FLO
