@@ -156,12 +156,33 @@ if __name__ == "__main__":
 
     print(f"\nTotal parameters: {total_params:,}")
 
-    # --- FLOPS calculation ---
+    # --- Parameter counting comparison ---
+    print("\n--- Parameter Counting Comparison ---")
     
-    print("\n--- FLOPS Analysis ---")
-    # Create a fresh model for FLOPS calculation
+    # Method 1: Manual counting (our method)
+    manual_count = sum(p.numel() for p in model.parameters())
+    print(f"Manual count: {manual_count:,}")
+    
+    # Method 2: Using thop's profile function
     flops_model = MSGUNet(in_channels=3, out_channels=1, base_channels=32)
-    input_tensor = torch.randn(1, 3, 256, 256)  # Single sample for FLOPS calculation
+    input_tensor = torch.randn(1, 3, 256, 256)
+    
+    try:
+        flops, thop_params = profile(flops_model, inputs=(input_tensor,), verbose=False)
+        print(f"thop count:   {thop_params:,}")
+        print(f"Difference:   {manual_count - thop_params:,} parameters")
+        
+        if manual_count != thop_params:
+            print("\nNote: The difference is likely due to:")
+            print("- thop might not count all custom module parameters")
+            print("- Different handling of BatchNorm/bias parameters")
+            print("- Manual count includes ALL model.parameters()")
+            print("- thop count is based on forward pass profiling")
+    except Exception as e:
+        print(f"thop counting failed: {e}")
+
+    # --- FLOPS calculation ---
+    print("\n--- FLOPS Analysis ---")
     
     try:
         flops, params = profile(flops_model, inputs=(input_tensor,), verbose=False)

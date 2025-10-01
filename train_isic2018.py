@@ -11,6 +11,8 @@ import os
 from PIL import Image
 from tqdm import tqdm
 import random
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 # Set random seeds for reproducibility
 SEED = 42
@@ -32,18 +34,16 @@ def seed_worker(worker_id):
 class ISICSegmentationDataset(Dataset):
     VALID_IMG_EXTENSIONS = {".jpg", ".jpeg", ".png"}  # normal images/masks
 
-    def __init__(self, base_dir, split="train", transform=None, mask_transform=None, seed=42):
+    def __init__(self, base_dir, split="train", transform=None, seed=42):
         """
         Args:
-            base_dir (str): Path to the ISIC dataset (ISIC2018 or ISIC2018).
+            base_dir (str): Path to the ISIC dataset (ISIC2017 or ISIC2018).
             split (str): One of ["train", "test"] for the final 70:30 split.
-            transform: Transformations for images.
-            mask_transform: Transformations for masks.
+            transform: Albumentations transform for both images and masks.
             seed (int): Random seed for shuffling.
         """
         self.samples = []
         self.transform = transform
-        self.mask_transform = mask_transform
 
         # Gather images/masks from both train and val folders
         all_samples = []
@@ -87,46 +87,44 @@ class ISICSegmentationDataset(Dataset):
         img_path, mask_path = self.samples[idx]
         img = Image.open(img_path).convert("RGB")
         mask = Image.open(mask_path).convert("L")
+        
+        # Convert PIL to numpy arrays for albumentations
+        img = np.array(img)
+        mask = np.array(mask)
 
+        # Apply albumentations transforms (handles image-mask sync automatically)
         if self.transform:
-            img = self.transform(img)
-        if self.mask_transform:
-            mask = self.mask_transform(mask)
-
+            transformed = self.transform(image=img, mask=mask)
+            img = transformed['image']
+            mask = transformed['mask']
+        
         return img, mask
 
 
 base_dir_2018 = "/home/aminu_yusuf/msgunet/datasets/ISIC2018"
 
-# Training transforms (with augmentation)
-transform_img_train = T.Compose([
-    T.Resize((256, 256)),
-    T.RandomHorizontalFlip(p=0.5),   # 50% chance to flip horizontally
-    T.RandomVerticalFlip(p=0.5),     # 50% chance to flip vertically
-    T.RandomRotation(degrees=15),    # rotate randomly between -15° to +15°
-    T.ToTensor(),
-    T.Normalize(mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]),
+# Training transforms with augmentation (cleaner with albumentations!)
+transform_train = A.Compose([
+    A.Resize(256, 256),
+    A.HorizontalFlip(p=0.5),
+    A.VerticalFlip(p=0.5), 
+    A.Rotate(limit=15, p=1.0),
+    A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ToTensorV2()
 ])
 
-# Test transforms (no augmentation - deterministic only)
-transform_img_test = T.Compose([
-    T.Resize((256, 256)),
-    T.ToTensor(),
-    T.Normalize(mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]),
-])
-
-transform_mask = T.Compose([
-    T.Resize((256, 256)),
-    T.ToTensor(),
+# Test transforms (no augmentation)
+transform_test = A.Compose([
+    A.Resize(256, 256),
+    A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ToTensorV2()
 ])  
 
 train_dataset_2018 = ISICSegmentationDataset(
-    base_dir=base_dir_2018, split="train", transform=transform_img_train, mask_transform=transform_mask, seed=SEED
+    base_dir=base_dir_2018, split="train", transform=transform_train, seed=SEED
 )
 test_dataset_2018 = ISICSegmentationDataset(
-    base_dir=base_dir_2018, split="test", transform=transform_img_test, mask_transform=transform_mask, seed=SEED
+    base_dir=base_dir_2018, split="test", transform=transform_test, seed=SEED
 )
 
 train_loader_2018 = DataLoader(train_dataset_2018, batch_size=8, shuffle=True, drop_last=True, worker_init_fn=seed_worker)
@@ -194,7 +192,7 @@ train_losses = []
 test_losses = []
 
 best_loss = float("inf")
-best_model_path = "weights/best_model_isic2018_5.pth"
+best_model_path = "weights/best_model_isic2018_6.pth"
 
 for epoch in range(n_epochs):
     train_loss = train_epoch(train_loader_2018, model, criterion, optimizer, device, epoch, n_epochs)
@@ -212,7 +210,7 @@ for epoch in range(n_epochs):
         print(f"✅ Saved best model at epoch {epoch+1} with Test Loss: {test_loss:.4f}")
 
 # Optionally save final model too
-torch.save(model.state_dict(), "weights/model_isic2018_5.pth")
+torch.save(model.state_dict(), "weights/model_isic2018_6.pth")
 print("💾 Training complete, final model saved.")
 
 
@@ -243,7 +241,7 @@ for idx in range(n_samples):
     plt.axis('off')
 
 plt.tight_layout()
-plt.savefig('plots/sample_predictions_grid_isic2018_5.png')
+plt.savefig('plots/sample_predictions_grid_isic2018_6.png')
 plt.show()
 
 # After training cell (after training loop and model saving)
@@ -255,7 +253,7 @@ plt.ylabel("Loss")
 plt.title("Loss Curve")
 plt.legend()
 plt.tight_layout()
-plt.savefig('plots/loss_curve_isic2018_5.png')
+plt.savefig('plots/loss_curve_isic2018_6.png')
 plt.show()
 
 
