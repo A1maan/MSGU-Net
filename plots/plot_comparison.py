@@ -55,10 +55,10 @@ ax.set_ylim(0, 105)
 ax.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('plots/isic_comparison_metrics_2.png', dpi=300, bbox_inches='tight', facecolor='white')
+plt.savefig('plots/isic_comparison_metrics_6.png', dpi=300, bbox_inches='tight', facecolor='white')
 plt.show()
 
-print("📊 Comparison plot saved as 'plots/isic_comparison_metrics_2.png'")
+print("📊 Comparison plot saved as 'plots/isic_comparison_metrics_6.png'")
 
 # Print summary comparison
 print("\n" + "="*60)
@@ -104,7 +104,7 @@ ax2.axhline(y=0, color='black', linestyle='-', alpha=0.3)
 ax2.set_facecolor('#F8F9FA')
 
 plt.tight_layout()
-plt.savefig('plots/isic_performance_differences_2.png', dpi=300, bbox_inches='tight', facecolor='white')
+plt.savefig('plots/isic_performance_differences_6.png', dpi=300, bbox_inches='tight', facecolor='white')
 plt.show()
 
-print("📊 Performance difference plot saved as 'plots/isic_performance_differences_2.png'")
+print("📊 Performance difference plot saved as 'plots/isic_performance_differences_6.png'")

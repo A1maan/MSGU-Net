@@ -13,5 +13,12 @@ Pillow>=9.0.0
 
 # For performance metrics
 scikit-learn>=1.0.0
+
+# For data augmentation (better than torchvision transforms)
+albumentations>=1.3.0
+
+# For progress bars during training
+tqdm>=4.65.0
+
 # For advanced model analysis (FLOPS and parameters)
-thop>=0.0.31.post2005241907  # Uncomment if FLO
+thop>=0.0.31.post2005241907  # Uncomment if needed
