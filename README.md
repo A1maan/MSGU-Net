@@ -8,7 +8,7 @@ MSGU-Net is a lightweight deep learning framework for medical image segmentation
 
 ## 🎯 Features
 
-- **Lightweight Architecture**: Only ~1.6M parameters with competitive performance
+- **Lightweight Architecture**: Only ~1.46M parameters with competitive performance
 - **MSGU-Net Architecture**: Combines U-Net with Multi-Scale, Ghost, ELA, SPP-Inception, and Attention modules
 - **Modular Design**: Easily extensible with custom modules in the `modules/` directory
 - **Dataset Support**: ISIC 2017 and ISIC 2018 skin lesion datasets
