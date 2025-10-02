@@ -136,7 +136,7 @@ All metrics are reported as percentages with 2 decimal places.
 | Metric | ISIC 2017 | ISIC 2018 |
 |--------|-----------|-----------|
 | mIoU | 80.76% | 80.49% |
-| DSC | 88.07% | 87.95% |
+| Dice Score | 88.07% | 87.95% |
 | Sensitivity | 87.10% | 88.72% |
 | Specificity | 98.31% | 96.79% |
 
